@@ -3,6 +3,7 @@
 package SNMP;
 	use strict;
 	use Data::Dumper;
+	use Net::SNMP;
 
 	my $nametable={
 		"sysDescr"		=> { oid => ".1.3.6.1.2.1.1.1" },
@@ -55,11 +56,15 @@ package SNMP;
 		my ($self, $host, $community) = @_;
 
                 my ($session,$error)=Net::SNMP->session(
-			Hostname => $host,
-			Version	 => 2,
-			Timeout  => 2,
-			Community => $community
+			-hostname => $host,
+			-version	 => 2,
+			-timeout  => 2,
+			-community => $community
 		);
+
+		if (!defined($session)) {
+			die("Error creating SNMP session: $error");
+		}
 
 		$self->{netsnmp}=$session;
 	}
@@ -205,8 +210,13 @@ package SNMP;
 	sub get {
 		my ($self, @args) = @_;
 
-		my $r=$self->{netsnmp}->get_request(-varbindlist =>
-			$self->_parse_request(@args));
+		my $r = $self->{netsnmp}->get_request(
+			-varbindlist => $self->_parse_request(@args)
+		);
+
+		if (!defined($r)) {
+			return { _error => $self->{netsnmp}->error() };
+		}
 
 		return $self->_parse_response($r, $self->{netsnmp}->error());
 	}
